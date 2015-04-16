@@ -16,6 +16,8 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.IO;
+using System.Reflection;
 using Ejdb.BSON;
 using Ejdb.Utils;
 
@@ -154,6 +156,57 @@ namespace Ejdb.DB {
 		//.//////////////////////////////////////////////////////////////////
 		//   				Native functions refs
 		//.//////////////////////////////////////////////////////////////////
+
+		#region Handle 32/64 bit library switching
+
+		// From Stackoverflow:
+		// http://stackoverflow.com/questions/1573724/cpu-architecture-independent-p-invoke-can-the-dllname-or-path-be-dynamic?lq=1
+
+		[DllImport("kernel32")]
+		private unsafe static extern void* LoadLibrary(string dllname);
+
+		[DllImport("kernel32")]
+		private unsafe static extern void FreeLibrary(void* handle);
+
+		private sealed unsafe class LibraryUnloader
+		{
+			internal LibraryUnloader(void* handle)
+			{
+				this._handle = handle;
+			}
+
+			~LibraryUnloader()
+			{
+				if (_handle != null)
+					FreeLibrary(_handle);
+			}
+
+			private void* _handle;
+		}
+
+		private static readonly LibraryUnloader unloader;
+
+		static EJDB()
+		{
+			// what is my .NET EJDB library path
+			string assemblyPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+			// where is my right platform path
+			string platformSize = (IntPtr.Size == 4) ? "x86" : "x64";
+			// combined location
+			string targetLibraryPath = Path.Combine(assemblyPath, platformSize, EJDB_LIB_NAME + ".dll");
+			
+			unsafe
+			{
+				void* handle = LoadLibrary(targetLibraryPath);
+
+				if (handle == null)
+					throw new DllNotFoundException("Cannot load EJDB native library from: " + targetLibraryPath);
+
+				unloader = new LibraryUnloader(handle);
+			}
+		}
+
+		#endregion
 
 		#region NativeRefs
 
