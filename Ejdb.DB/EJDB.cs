@@ -138,9 +138,11 @@ namespace Ejdb.DB {
 		/// <summary>
 		/// Name if EJDB library
 		/// </summary>
-		#if EJDBDLL
+		#if LIBEJDB
+		public const string EJDB_LIB_NAME = "libejdb";
+		#elif EJDBDLL
 		public const string EJDB_LIB_NAME = "tcejdbdll";
-#else
+		#else
 		public const string EJDB_LIB_NAME = "tcejdb";
 		#endif
 		/// <summary>
@@ -407,7 +409,11 @@ namespace Ejdb.DB {
 					if (_LIBHEXVERSION != 0) {
 						return _LIBHEXVERSION;
 					}
-					_LIBHEXVERSION = Convert.ToInt64("0x" + LIBVersion.Replace(".", ""), 16);
+					string[] parts = LIBVersion.Split(new char[] { '.' });
+					if (parts[2].Length == 1) parts[2] = "0" + parts[2];
+					string hexString = "0x" + parts[0] + parts[1] + parts[2];
+					_LIBHEXVERSION = Convert.ToInt64(hexString, 16);
+					//_LIBHEXVERSION = Convert.ToInt64("0x" + LIBVersion.Replace(".", ""), 16);
 				}
 				return _LIBHEXVERSION;
 			}
